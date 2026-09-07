@@ -6,8 +6,9 @@ dist/
 build/
 .vite/
 coverage/
+api/app.cjs
 
-# Secrets & env examples (never commit)
+# Secrets & env (never commit)
 .env
 .env.*
 **/.env

@@ -51,14 +51,26 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new ApiError(
+        res.status,
+        text.slice(0, 200) || res.statusText,
+        text,
+      );
+    }
+  }
 
   if (!res.ok) {
+    const record = body as { error?: unknown } | null;
     const message =
-      typeof body?.error === "string"
-        ? body.error
-        : body?.error
-          ? JSON.stringify(body.error)
+      typeof record?.error === "string"
+        ? record.error
+        : record?.error
+          ? JSON.stringify(record.error)
           : res.statusText;
     throw new ApiError(res.status, message, body);
   }
