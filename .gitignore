@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.vite/
+coverage/
+
+# Secrets & env examples (never commit)
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+
+# Course / local-only folders
+docs/
+supabase/
+
+# Logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editors / tooling
+.vscode/
+.idea/
+*.swp
+.vercel/
+
+# TypeScript incremental
+*.tsbuildinfo
