@@ -65,10 +65,6 @@ export function LoginPage() {
       <div className="auth-card">
         <p className="brand">FocusTrack</p>
         <h1>{mode === "signin" ? "Sign in" : "Create account"}</h1>
-        <p className="muted">
-          Internal email login or Google — your tasks and timers sync via Supabase.
-        </p>
-
         <form className="stack-form" onSubmit={onSubmit}>
           <label>
             Email
@@ -122,10 +118,6 @@ export function LoginPage() {
               </button>
             </>
           )}
-        </p>
-
-        <p className="tiny muted">
-          Need setup help? See <code>supabase/README.md</code> and <code>docs/COURSE.md</code> in the repo.
         </p>
       </div>
     </div>
