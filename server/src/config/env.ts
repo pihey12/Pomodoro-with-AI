@@ -1,23 +1,17 @@
 import dotenv from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// On Vercel, env vars come from the project settings — skip local .env file.
+// Local only. Do not use import.meta.url here — it crashes under Vercel's bundler.
 if (!process.env.VERCEL) {
-  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+  dotenv.config(); // loads server/.env when cwd is server/ (npm -w server)
 }
 
 /**
- * Newer Supabase dashboards show:
- *   SUPABASE_PUBLISHABLE_KEY  (client-safe, like the old "anon" key)
- *   SUPABASE_SECRET_KEY       (server-only, like the old "service_role" key)
- * Older projects still use SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY.
- * We accept either naming style.
+ * Newer Supabase dashboards:
+ *   SUPABASE_PUBLISHABLE_KEY  (client-safe)
+ *   SUPABASE_SECRET_KEY       (server-only)
  *
- * CLIENT_ORIGIN may be a comma-separated list, e.g.
+ * CLIENT_ORIGIN may be comma-separated:
  *   http://localhost:5173,https://your-app.vercel.app
  */
 const rawSchema = z.object({
@@ -31,31 +25,42 @@ const rawSchema = z.object({
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
 });
 
-const parsed = rawSchema.safeParse(process.env);
+function loadEnv() {
+  const parsed = rawSchema.safeParse(process.env);
 
-if (!parsed.success) {
-  console.error("Invalid server environment:", parsed.error.flatten().fieldErrors);
-  console.error("Copy server/.env.example → server/.env and fill in your Supabase + OpenAI values.");
-  process.exit(1);
+  if (!parsed.success) {
+    const details = parsed.error.flatten().fieldErrors;
+    const message = `Invalid server environment: ${JSON.stringify(details)}`;
+    if (process.env.VERCEL) {
+      throw new Error(message);
+    }
+    console.error(message);
+    console.error("Create server/.env with SUPABASE_* and OPENAI_API_KEY.");
+    process.exit(1);
+  }
+
+  const publishableKey =
+    parsed.data.SUPABASE_PUBLISHABLE_KEY ?? parsed.data.SUPABASE_ANON_KEY;
+
+  if (!publishableKey) {
+    const message =
+      "Missing SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY).";
+    if (process.env.VERCEL) {
+      throw new Error(message);
+    }
+    console.error(message);
+    process.exit(1);
+  }
+
+  return {
+    SUPABASE_URL: parsed.data.SUPABASE_URL,
+    SUPABASE_ANON_KEY: publishableKey,
+    SUPABASE_SERVICE_ROLE_KEY:
+      parsed.data.SUPABASE_SECRET_KEY ?? parsed.data.SUPABASE_SERVICE_ROLE_KEY,
+    OPENAI_API_KEY: parsed.data.OPENAI_API_KEY,
+    PORT: parsed.data.PORT,
+    CLIENT_ORIGIN: parsed.data.CLIENT_ORIGIN,
+  };
 }
 
-const publishableKey =
-  parsed.data.SUPABASE_PUBLISHABLE_KEY ?? parsed.data.SUPABASE_ANON_KEY;
-
-if (!publishableKey) {
-  console.error(
-    "Missing Supabase client key. Set SUPABASE_PUBLISHABLE_KEY (new dashboard) or SUPABASE_ANON_KEY (legacy).",
-  );
-  process.exit(1);
-}
-
-export const env = {
-  SUPABASE_URL: parsed.data.SUPABASE_URL,
-  /** Client-safe key used with createClient (publishable or legacy anon). */
-  SUPABASE_ANON_KEY: publishableKey,
-  SUPABASE_SERVICE_ROLE_KEY:
-    parsed.data.SUPABASE_SECRET_KEY ?? parsed.data.SUPABASE_SERVICE_ROLE_KEY,
-  OPENAI_API_KEY: parsed.data.OPENAI_API_KEY,
-  PORT: parsed.data.PORT,
-  CLIENT_ORIGIN: parsed.data.CLIENT_ORIGIN,
-};
+export const env = loadEnv();

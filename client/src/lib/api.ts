@@ -1,9 +1,21 @@
 import { supabase } from "./supabase";
 
-/** Empty string = same origin (Vercel). Locally default to Express port. */
-const API_URL =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV ? "http://localhost:3001" : "");
+/**
+ * Production on Vercel: same-origin `/api` (empty base).
+ * If VITE_API_URL was set to localhost in Vercel env by mistake, ignore it in prod builds.
+ */
+function resolveApiUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL ?? "").trim();
+  if (import.meta.env.PROD) {
+    if (!raw || raw.includes("localhost") || raw.includes("127.0.0.1")) {
+      return "";
+    }
+    return raw.replace(/\/$/, "");
+  }
+  return raw || "http://localhost:3001";
+}
+
+const API_URL = resolveApiUrl();
 
 async function getAccessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();

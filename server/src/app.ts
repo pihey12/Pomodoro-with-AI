@@ -16,8 +16,14 @@ export function createApp() {
   app.use(
     cors({
       origin(origin, callback) {
-        // Same-origin / server-to-server / local tools may omit Origin
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+        // Same-origin browser calls omit CORS preflight issues; allow missing Origin.
+        // On Vercel, also allow the deployment host even if CLIENT_ORIGIN is slightly wrong.
+        if (
+          !origin ||
+          allowedOrigins.includes(origin) ||
+          allowedOrigins.includes("*") ||
+          (process.env.VERCEL && origin.endsWith(".vercel.app"))
+        ) {
           callback(null, true);
           return;
         }
